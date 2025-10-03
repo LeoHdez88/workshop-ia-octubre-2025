@@ -1,0 +1,144 @@
+@page "/dashboard"
+@inject Frontend.Services.ICompanyService CompanyService
+@inject Frontend.Services.IIndustryService IndustryService
+@inject Frontend.Services.ILocationService LocationService
+
+<PageTitle>Dashboard SaaS</PageTitle>
+
+<div class="dashboard-container">
+    <h1>Empresas SaaS</h1>
+    <div class="filters">
+        <label>Industria:</label>
+        <select @bind="selectedIndustryId">
+            <option value="">Todas</option>
+            @foreach (var industry in industries)
+            {
+                <option value="@industry.Id">@industry.Name</option>
+            }
+        </select>
+        <label>Ubicación:</label>
+        <select @bind="selectedLocationId">
+            <option value="">Todas</option>
+            @foreach (var location in locations)
+            {
+                <option value="@location.Id">@location.City, @location.Country</option>
+            }
+        </select>
+        <label>Nombre:</label>
+        <input type="text" @bind="searchName" placeholder="Buscar por nombre" />
+        <button @onclick="LoadCompanies">Filtrar</button>
+    </div>
+    <table class="companies-table">
+        <thead>
+            <tr>
+                <th @onclick="@(() => SortByColumn("Name"))">Nombre @GetSortIcon("Name")</th>
+                <th @onclick="@(() => SortByColumn("Industry"))">Industria @GetSortIcon("Industry")</th>
+                <th @onclick="@(() => SortByColumn("Location"))">Ubicación @GetSortIcon("Location")</th>
+                <th @onclick="@(() => SortByColumn("Employees"))">Empleados @GetSortIcon("Employees")</th>
+            </tr>
+        </thead>
+        <tbody>
+            @if (companies.Count == 0)
+            {
+                <tr><td colspan="6">No hay empresas para mostrar.</td></tr>
+            }
+            else
+            {
+                @foreach (var company in companies)
+                {
+                    <tr>
+                        <td>@company.Name</td>
+                        <td>@company.Industry</td>
+                        <td>@company.Location</td>
+                        <td>@company.Employees</td>
+                    </tr>
+                }
+            }
+        </tbody>
+    </table>
+    <div class="pagination">
+        <button @onclick="PrevPage" disabled="@(currentPage == 1)">Anterior</button>
+        <span>Página @currentPage</span>
+        <button @onclick="NextPage" disabled="@(companies.Count < pageSize)">Siguiente</button>
+    </div>
+</div>
+
+@code {
+    private List<Frontend.DTOs.CompanyDto> companies = new();
+    private List<Frontend.DTOs.IndustryDto> industries = new();
+    private List<Frontend.DTOs.LocationDto> locations = new();
+    private long? selectedIndustryId = null;
+    private long? selectedLocationId = null;
+    private string searchName = "";
+    private int currentPage = 1;
+    private int pageSize = 10;
+    private string sortColumn = "";
+    private bool sortAsc = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        industries = (await IndustryService.GetIndustriesAsync()).ToList();
+        locations = (await LocationService.GetLocationsAsync()).ToList();
+        await LoadCompanies();
+    }
+
+    private async Task LoadCompanies()
+    {
+        var result = (await CompanyService.GetCompaniesAsync(
+            selectedIndustryId,
+            selectedLocationId,
+            string.IsNullOrWhiteSpace(searchName) ? null : searchName,
+            currentPage,
+            pageSize)).ToList();
+        companies = SortCompanies(result);
+    }
+
+    private List<Frontend.DTOs.CompanyDto> SortCompanies(List<Frontend.DTOs.CompanyDto> list)
+    {
+        if (string.IsNullOrEmpty(sortColumn)) return list;
+        return sortColumn switch
+        {
+            "Name" => sortAsc ? list.OrderBy(c => c.Name).ToList() : list.OrderByDescending(c => c.Name).ToList(),
+            "Industry" => sortAsc ? list.OrderBy(c => c.Industry).ToList() : list.OrderByDescending(c => c.Industry).ToList(),
+            "Location" => sortAsc ? list.OrderBy(c => c.Location).ToList() : list.OrderByDescending(c => c.Location).ToList(),
+            "Employees" => sortAsc ? list.OrderBy(c => c.Employees).ToList() : list.OrderByDescending(c => c.Employees).ToList(),
+            _ => list
+        };
+    }
+
+    private void SortByColumn(string column)
+    {
+        if (sortColumn == column)
+            sortAsc = !sortAsc;
+        else
+        {
+            sortColumn = column;
+            sortAsc = true;
+        }
+        companies = SortCompanies(companies);
+    }
+
+    private string GetSortIcon(string column)
+    {
+        if (sortColumn != column) return "";
+        return sortAsc ? "▲" : "▼";
+    }
+
+    private async Task PrevPage()
+    {
+        if (currentPage > 1)
+        {
+            currentPage--;
+            await LoadCompanies();
+        }
+    }
+
+    private async Task NextPage()
+    {
+        if (companies.Count == pageSize)
+        {
+            currentPage++;
+            await LoadCompanies();
+        }
+    }
+}

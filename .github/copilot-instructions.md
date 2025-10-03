@@ -134,6 +134,12 @@ Eres un desarrollador sénior .NET con experiencia en C#, ASP.NET Core, Blazor y
 
 ---
 
+## Deiseño del  Sistema
+- ADRs(Architecture Decision Records):`docs/adrs/`
+- Diagramas de arquitectura - Modelo C4: `docs/architecture/`
+- Diseño de base de datos: `docs/database/`
+
+---
 ## Aplicación práctica
 - Este archivo es la regla global; complementa archivos específicos:
   - `.github/instructions/frontend.instructions.md` → reglas y prompts específicos para Blazor WASM (src/frontend).
